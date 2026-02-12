@@ -24,7 +24,10 @@
       "Bash(wrangler pages deployment list:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:www.skoobym.app)"
+      "WebFetch(domain:www.skoobym.app)",
+      "Bash(node -e:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

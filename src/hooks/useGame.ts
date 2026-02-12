@@ -10,7 +10,10 @@ import {
   getHintPosition,
 } from '../core/solver';
 import { useHistory } from './useHistory';
-import { getDefaultPuzzle, convertDefaultPuzzle } from '../data/defaultPuzzles';
+import {
+  getRandomPuzzleFromBank,
+  convertPuzzleEntry,
+} from '../data/puzzleBank';
 
 export function useGame() {
   const [grid, setGrid] = useState<Cell[][]>([]);
@@ -28,18 +31,18 @@ export function useGame() {
 
   const { pushState, undo: undoHistory, redo: redoHistory, reset: resetHistory, canUndo, canRedo } = useHistory();
 
-  // 加载默认谜题
+  // 加载默认谜题（从谜题库随机选择）
   const loadDefaultPuzzle = useCallback((newSize: number, newDifficulty: number) => {
-    const defaultPuzzle = getDefaultPuzzle(newSize, newDifficulty);
+    const puzzle = getRandomPuzzleFromBank(newSize, newDifficulty);
 
-    if (defaultPuzzle) {
-      console.log(`使用默认谜题: ${defaultPuzzle.name}`);
-      const converted = convertDefaultPuzzle(defaultPuzzle);
-      const newGrid = createEmptyGrid(defaultPuzzle.size, converted.types);
+    if (puzzle) {
+      console.log(`使用谜题库谜题: ${puzzle.id}`);
+      const converted = convertPuzzleEntry(puzzle);
+      const newGrid = createEmptyGrid(puzzle.size, converted.types);
       updateIllumination(newGrid);
 
       setGrid(newGrid);
-      setSize(defaultPuzzle.size);
+      setSize(puzzle.size);
       setDifficulty(newDifficulty);
       setSolution(converted.solution);
       setStatus('playing');
