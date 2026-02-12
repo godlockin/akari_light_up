@@ -21,7 +21,10 @@
       "Bash(wrangler pages project list:*)",
       "Bash(wrangler pages project create:*)",
       "Bash(git commit:*)",
-      "Bash(wrangler pages deployment list:*)"
+      "Bash(wrangler pages deployment list:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.skoobym.app)"
     ]
   }
 }

@@ -1,22 +1,39 @@
 import {
   CellType,
   Position,
-  DIFFICULTY_CONFIG,
   posToString,
   stringToPos,
 } from './types';
 import { solve } from './solver';
 
 /**
- * 生成随机数
+ * 难度配置 - 按照用户规范
  */
+const DIFFICULTY_PROFILES = {
+  // 简单: 5-7x5-7, 15%黑格, 给满数字(多用0,3,4)
+  easy: {
+    sizeRange: [5, 7] as [number, number],
+    blackRatio: 0.15,
+    clueDensity: 1.0,
+  },
+  // 中等: 10x10, 20%黑格, 删掉30%数字, 多留1,2
+  medium: {
+    sizeRange: [10, 10] as [number, number],
+    blackRatio: 0.20,
+    clueDensity: 0.70,
+  },
+  // 困难: 15x15以上, 22%黑格, 删掉60%数字, 大量无数字黑格
+  hard: {
+    sizeRange: [15, 25] as [number, number],
+    blackRatio: 0.22,
+    clueDensity: 0.40,
+  },
+};
+
 function random(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-/**
- * 打乱数组
- */
 function shuffle<T>(arr: T[]): T[] {
   const result = [...arr];
   for (let i = result.length - 1; i > 0; i--) {
@@ -61,38 +78,94 @@ function getIlluminatedFrom(
 }
 
 /**
- * 策略1: 贪心最大覆盖 - 优先放能照亮最多未覆盖格子的灯
+ * 生成黑格 - 避免2x2全黑和全黑边框
  */
-function strategyGreedyCoverage(
+function generateBlackCells(
   size: number,
-  difficulty: number
-): { types: CellType[][]; solution: Set<string> } | null {
-  const config = DIFFICULTY_CONFIG[difficulty];
+  ratio: number
+): Set<string> {
+  const blackCells = new Set<string>();
+  const targetCount = Math.floor(size * size * ratio);
 
-  const types: CellType[][] = Array(size).fill(null).map(() => Array(size).fill('white'));
+  // 所有可能的格子（排除边框）
+  const candidates: Position[] = [];
+  for (let r = 1; r < size - 1; r++) {
+    for (let c = 1; c < size - 1; c++) {
+      candidates.push({ row: r, col: c });
+    }
+  }
+
+  const shuffled = shuffle(candidates);
+
+  for (const pos of shuffled) {
+    if (blackCells.size >= targetCount) break;
+
+    // 检查是否形成2x2黑格块
+    const neighbors = [
+      { r: pos.row - 1, c: pos.col },
+      { r: pos.row + 1, c: pos.col },
+      { r: pos.row, c: pos.col - 1 },
+      { r: pos.row, c: pos.col + 1 },
+      { r: pos.row - 1, c: pos.col - 1 },
+      { r: pos.row - 1, c: pos.col + 1 },
+      { r: pos.row + 1, c: pos.col - 1 },
+      { r: pos.row + 1, c: pos.col + 1 },
+    ];
+
+    let wouldForm2x2 = false;
+    for (const n of neighbors) {
+      const key1 = posToString(n.r, pos.col);
+      const key2 = posToString(pos.row, n.c);
+      if (blackCells.has(key1) && blackCells.has(key2)) {
+        wouldForm2x2 = true;
+        break;
+      }
+    }
+
+    if (!wouldForm2x2) {
+      blackCells.add(posToString(pos.row, pos.col));
+    }
+  }
+
+  return blackCells;
+}
+
+/**
+ * 贪心放置灯泡 - 确保全覆盖且不冲突
+ */
+function placeBulbs(
+  size: number,
+  blackCells: Set<string>
+): Set<string> | null {
   const bulbs = new Set<string>();
   const illuminated = new Set<string>();
-  const allCells: Position[] = [];
 
+  // 所有白格
+  const whiteCells: Position[] = [];
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
-      allCells.push({ row: r, col: c });
+      const key = posToString(r, c);
+      if (!blackCells.has(key)) {
+        whiteCells.push({ row: r, col: c });
+      }
     }
   }
 
   // 最大覆盖贪心
-  while (illuminated.size < size * size) {
+  while (illuminated.size < whiteCells.length) {
     let bestPos: Position | null = null;
     let bestCoverage = 0;
 
-    for (const pos of allCells) {
+    for (const pos of whiteCells) {
       const key = posToString(pos.row, pos.col);
       if (bulbs.has(key)) continue;
 
-      const coverage = getIlluminatedFrom(size, pos.row, pos.col, new Set());
+      const coverage = getIlluminatedFrom(size, pos.row, pos.col, blackCells);
       let uncoveredCount = 0;
       for (const cell of coverage) {
-        if (!illuminated.has(cell)) uncoveredCount++;
+        if (!blackCells.has(cell) && !illuminated.has(cell)) {
+          uncoveredCount++;
+        }
       }
 
       if (uncoveredCount > bestCoverage) {
@@ -101,9 +174,9 @@ function strategyGreedyCoverage(
       }
     }
 
+    // 如果没有找到能覆盖新格子的位置，找第一个未照亮的
     if (!bestPos || bestCoverage === 0) {
-      // 找第一个未照亮的格子强制放灯
-      for (const pos of allCells) {
+      for (const pos of whiteCells) {
         const key = posToString(pos.row, pos.col);
         if (!illuminated.has(key) && !bulbs.has(key)) {
           bestPos = pos;
@@ -112,316 +185,37 @@ function strategyGreedyCoverage(
       }
     }
 
-    if (!bestPos) break;
+    if (!bestPos) return null; // 无法完成
 
     const key = posToString(bestPos.row, bestPos.col);
     bulbs.add(key);
-    const newlyLit = getIlluminatedFrom(size, bestPos.row, bestPos.col, new Set());
+
+    const newlyLit = getIlluminatedFrom(size, bestPos.row, bestPos.col, blackCells);
     for (const cell of newlyLit) {
-      illuminated.add(cell);
+      if (!blackCells.has(cell)) {
+        illuminated.add(cell);
+      }
     }
   }
 
-  return finalizePuzzle(size, types, bulbs, config);
+  return bulbs;
 }
 
 /**
- * 策略2: 随机扫描线 - 按行/列扫描随机放置
+ * 根据难度配置推导数字
  */
-function strategyScanline(
-  size: number,
-  difficulty: number
-): { types: CellType[][]; solution: Set<string> } | null {
-  const config = DIFFICULTY_CONFIG[difficulty];
-  const types: CellType[][] = Array(size).fill(null).map(() => Array(size).fill('white'));
-  const bulbs = new Set<string>();
-  const illuminated = new Set<string>();
-
-  // 随机决定扫描方向
-  const scanByRow = Math.random() > 0.5;
-
-  if (scanByRow) {
-    for (let row = 0; row < size; row++) {
-      const cols = shuffle([...Array(size).keys()]);
-      for (const col of cols) {
-        const key = posToString(row, col);
-        if (!illuminated.has(key)) {
-          bulbs.add(key);
-          const newlyLit = getIlluminatedFrom(size, row, col, new Set());
-          for (const cell of newlyLit) illuminated.add(cell);
-        }
-      }
-    }
-  } else {
-    for (let col = 0; col < size; col++) {
-      const rows = shuffle([...Array(size).keys()]);
-      for (const row of rows) {
-        const key = posToString(row, col);
-        if (!illuminated.has(key)) {
-          bulbs.add(key);
-          const newlyLit = getIlluminatedFrom(size, row, col, new Set());
-          for (const cell of newlyLit) illuminated.add(cell);
-        }
-      }
-    }
-  }
-
-  return finalizePuzzle(size, types, bulbs, config);
-}
-
-/**
- * 策略3: 棋盘格模式 - 交替放置创造规则结构
- */
-function strategyCheckerboard(
-  size: number,
-  difficulty: number
-): { types: CellType[][]; solution: Set<string> } | null {
-  const config = DIFFICULTY_CONFIG[difficulty];
-  const types: CellType[][] = Array(size).fill(null).map(() => Array(size).fill('white'));
-  const bulbs = new Set<string>();
-
-  // 两种棋盘格偏移
-  const offset = Math.random() > 0.5 ? 0 : 1;
-
-  for (let row = 0; row < size; row++) {
-    for (let col = 0; col < size; col++) {
-      if ((row + col) % 2 === offset) {
-        bulbs.add(posToString(row, col));
-      }
-    }
-  }
-
-  // 移除互相照射的灯（保留奇数位置的）
-  const bulbsArray = Array.from(bulbs).map(stringToPos);
-  const toRemove = new Set<string>();
-
-  for (let i = 0; i < bulbsArray.length; i++) {
-    for (let j = i + 1; j < bulbsArray.length; j++) {
-      const b1 = bulbsArray[i];
-      const b2 = bulbsArray[j];
-
-      if (b1.row === b2.row || b1.col === b2.col) {
-        // 同一行或列，需要移除一个
-        if (Math.random() > 0.5) {
-          toRemove.add(posToString(b1.row, b1.col));
-        } else {
-          toRemove.add(posToString(b2.row, b2.col));
-        }
-      }
-    }
-  }
-
-  for (const key of toRemove) {
-    bulbs.delete(key);
-  }
-
-  // 确保全覆盖
-  const illuminated = new Set<string>();
-  for (const key of bulbs) {
-    const pos = stringToPos(key);
-    const newlyLit = getIlluminatedFrom(size, pos.row, pos.col, new Set());
-    for (const cell of newlyLit) illuminated.add(cell);
-  }
-
-  // 补充未照亮的区域
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      const key = posToString(r, c);
-      if (!illuminated.has(key) && !bulbs.has(key)) {
-        bulbs.add(key);
-        const newlyLit = getIlluminatedFrom(size, r, c, new Set());
-        for (const cell of newlyLit) illuminated.add(cell);
-      }
-    }
-  }
-
-  return finalizePuzzle(size, types, bulbs, config);
-}
-
-/**
- * 策略4: 分区递归 - 将棋盘分成小区块分别求解
- */
-function strategyPartition(
-  size: number,
-  difficulty: number
-): { types: CellType[][]; solution: Set<string> } | null {
-  const config = DIFFICULTY_CONFIG[difficulty];
-  const types: CellType[][] = Array(size).fill(null).map(() => Array(size).fill('white'));
-  const bulbs = new Set<string>();
-
-  // 分区大小
-  const partitionSize = Math.max(3, Math.floor(size / 2));
-
-  for (let startRow = 0; startRow < size; startRow += partitionSize) {
-    for (let startCol = 0; startCol < size; startCol += partitionSize) {
-      const endRow = Math.min(startRow + partitionSize, size);
-      const endCol = Math.min(startCol + partitionSize, size);
-
-      // 在每个分区中心放灯
-      const centerRow = Math.floor((startRow + endRow - 1) / 2);
-      const centerCol = Math.floor((startCol + endCol - 1) / 2);
-      bulbs.add(posToString(centerRow, centerCol));
-    }
-  }
-
-  // 检查并补充覆盖
-  const illuminated = new Set<string>();
-  for (const key of bulbs) {
-    const pos = stringToPos(key);
-    const newlyLit = getIlluminatedFrom(size, pos.row, pos.col, new Set());
-    for (const cell of newlyLit) illuminated.add(cell);
-  }
-
-  // 补充未照亮的格子
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      const key = posToString(r, c);
-      if (!illuminated.has(key) && !bulbs.has(key)) {
-        // 检查是否与现有灯冲突
-        let conflict = false;
-        for (const existingKey of bulbs) {
-          const existing = stringToPos(existingKey);
-          if (existing.row === r || existing.col === c) {
-            conflict = true;
-            break;
-          }
-        }
-        if (!conflict) {
-          bulbs.add(key);
-          const newlyLit = getIlluminatedFrom(size, r, c, new Set());
-          for (const cell of newlyLit) illuminated.add(cell);
-        }
-      }
-    }
-  }
-
-  return finalizePuzzle(size, types, bulbs, config);
-}
-
-/**
- * 策略5: 高密度随机 - 适合高难度，允许更多灯
- */
-function strategyDenseRandom(
-  size: number,
-  difficulty: number
-): { types: CellType[][]; solution: Set<string> } | null {
-  const config = DIFFICULTY_CONFIG[difficulty];
-  const types: CellType[][] = Array(size).fill(null).map(() => Array(size).fill('white'));
-  const bulbs = new Set<string>();
-  const allCells = shuffle([...Array(size * size).keys()].map(i => ({
-    row: Math.floor(i / size),
-    col: i % size
-  })));
-
-  const illuminated = new Set<string>();
-
-  for (const pos of allCells) {
-    const key = posToString(pos.row, pos.col);
-
-    // 如果未被照亮，放置灯泡
-    if (!illuminated.has(key)) {
-      // 检查是否与现有灯泡冲突
-      let conflict = false;
-      for (const dir of [[-1,0], [1,0], [0,-1], [0,1]]) {
-        let r = pos.row + dir[0];
-        let c = pos.col + dir[1];
-        while (r >= 0 && r < size && c >= 0 && c < size) {
-          const k = posToString(r, c);
-          if (bulbs.has(k)) {
-            conflict = true;
-            break;
-          }
-          r += dir[0];
-          c += dir[1];
-        }
-        if (conflict) break;
-      }
-
-      if (!conflict) {
-        bulbs.add(key);
-        const newlyLit = getIlluminatedFrom(size, pos.row, pos.col, new Set());
-        for (const cell of newlyLit) illuminated.add(cell);
-      }
-    }
-  }
-
-  return finalizePuzzle(size, types, bulbs, config);
-}
-
-/**
- * 最终处理：添加黑格、数字，验证唯一解
- */
-function finalizePuzzle(
+function deriveNumbers(
   size: number,
   types: CellType[][],
+  blackCells: Set<string>,
   bulbs: Set<string>,
-  config: { blackRatio: [number, number]; clueDensity: [number, number] }
-): { types: CellType[][]; solution: Set<string> } | null {
+  profile: { sizeRange: [number, number]; blackRatio: number; clueDensity: number }
+): void {
   const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-  // 检查全覆盖
-  const illuminated = new Set<string>();
-  for (const key of bulbs) {
-    const pos = stringToPos(key);
-    const lit = getIlluminatedFrom(size, pos.row, pos.col, new Set());
-    for (const cell of lit) illuminated.add(cell);
-  }
-
-  if (illuminated.size < size * size * 0.9) {
-    return null; // 覆盖不足
-  }
-
-  // 添加黑格分隔
-  const blackCells = new Set<string>();
-  const bulbArray = Array.from(bulbs).map(stringToPos);
-
-  for (let i = 0; i < bulbArray.length; i++) {
-    for (let j = i + 1; j < bulbArray.length; j++) {
-      const b1 = bulbArray[i];
-      const b2 = bulbArray[j];
-
-      if (b1.row === b2.row && Math.abs(b1.col - b2.col) > 2) {
-        const midCol = Math.floor((b1.col + b2.col) / 2);
-        const key = posToString(b1.row, midCol);
-        if (!bulbs.has(key)) {
-          blackCells.add(key);
-          types[b1.row][midCol] = 'black';
-        }
-      } else if (b1.col === b2.col && Math.abs(b1.row - b2.row) > 2) {
-        const midRow = Math.floor((b1.row + b2.row) / 2);
-        const key = posToString(midRow, b1.col);
-        if (!bulbs.has(key)) {
-          blackCells.add(key);
-          types[midRow][b1.col] = 'black';
-        }
-      }
-    }
-  }
-
-  // 添加额外黑格达到目标密度
-  const targetBlack = Math.floor(size * size *
-    random(Math.round(config.blackRatio[0] * 100), Math.round(config.blackRatio[1] * 100)) / 100);
-
-  const allPositions: Position[] = [];
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      const key = posToString(r, c);
-      if (!bulbs.has(key) && !blackCells.has(key)) {
-        allPositions.push({ row: r, col: c });
-      }
-    }
-  }
-
-  const shuffled = shuffle(allPositions);
-  for (const pos of shuffled) {
-    if (blackCells.size >= targetBlack) break;
-    const key = posToString(pos.row, pos.col);
-    blackCells.add(key);
-    types[pos.row][pos.col] = 'black';
-  }
-
-  // 推导数字
+  // 统计每个黑格相邻的灯数量
   const blackWithNumbers: { pos: Position; count: number }[] = [];
+
   for (const key of blackCells) {
     const pos = stringToPos(key);
     let count = 0;
@@ -435,126 +229,173 @@ function finalizePuzzle(
     blackWithNumbers.push({ pos, count });
   }
 
-  const clueDensity = random(
-    Math.round(config.clueDensity[0] * 100),
-    Math.round(config.clueDensity[1] * 100)
-  ) / 100;
+  // 根据难度配置决定显示哪些数字
+  if (profile.clueDensity === 1.0) {
+    // 简单：给满数字，优先0,3,4
+    const prioritized = shuffle(blackWithNumbers.filter(b => b.count === 0 || b.count >= 3))
+      .concat(shuffle(blackWithNumbers.filter(b => b.count >= 1 && b.count <= 2)));
 
-  const showCount = Math.max(1, Math.floor(blackWithNumbers.length * clueDensity));
-  const shuffledNumbers = shuffle(blackWithNumbers);
+    for (const { pos, count } of prioritized) {
+      if (count <= 4) {
+        types[pos.row][pos.col] = `black-${count}` as CellType;
+      }
+    }
+  } else {
+    // 中等/困难：按密度保留
+    const shuffled = shuffle(blackWithNumbers);
+    const showCount = Math.max(1, Math.floor(shuffled.length * profile.clueDensity));
 
-  for (let i = 0; i < shuffledNumbers.length; i++) {
-    const { pos, count } = shuffledNumbers[i];
-    if (i < showCount && count <= 4) {
-      types[pos.row][pos.col] = `black-${count}` as CellType;
+    for (let i = 0; i < shuffled.length; i++) {
+      const { pos, count } = shuffled[i];
+      if (i < showCount && count <= 4) {
+        types[pos.row][pos.col] = `black-${count}` as CellType;
+      }
     }
   }
-
-  // 验证唯一解
-  const result = solve(types);
-  if (result.solvable && result.unique) {
-    return { types, solution: result.solution };
-  }
-
-  return null;
 }
 
 /**
- * 并行生成谜题 - 多策略竞争模式
+ * 验证谜题有唯一解
+ */
+function validatePuzzle(types: CellType[][]): boolean {
+  const result = solve(types);
+  return result.solvable && result.unique;
+}
+
+/**
+ * 单次生成尝试
+ */
+function generateAttempt(
+  size: number,
+  profile: { sizeRange: [number, number]; blackRatio: number; clueDensity: number }
+): { types: CellType[][]; solution: Set<string> } | null {
+  // 1. 生成黑格
+  const blackCells = generateBlackCells(size, profile.blackRatio);
+
+  // 2. 放置灯泡
+  const bulbs = placeBulbs(size, blackCells);
+  if (!bulbs) return null;
+
+  // 3. 初始化类型网格
+  const types: CellType[][] = [];
+  for (let r = 0; r < size; r++) {
+    types[r] = [];
+    for (let c = 0; c < size; c++) {
+      const key = posToString(r, c);
+      types[r][c] = blackCells.has(key) ? 'black' : 'white';
+    }
+  }
+
+  // 4. 推导数字
+  deriveNumbers(size, types, blackCells, bulbs, profile);
+
+  // 5. 验证唯一解
+  if (!validatePuzzle(types)) return null;
+
+  return { types, solution: bulbs };
+}
+
+/**
+ * 异步生成谜题 - 多难度支持
  */
 export async function generatePuzzle(
   size: number,
   difficulty: number,
-  maxAttemptsPerStrategy: number = 200,
-  onProgress?: (strategyName: string, attempt: number) => void
-): Promise<{ types: CellType[][]; solution: Set<string>; strategy: string } | null> {
+  maxAttempts: number = 500,
+  onProgress?: (attempt: number, maxAttempts: number) => void
+): Promise<{ types: CellType[][]; solution: Set<string>; profile: string } | null> {
 
-  const strategies = [
-    { name: '贪心覆盖', fn: strategyGreedyCoverage },
-    { name: '扫描线', fn: strategyScanline },
-    { name: '棋盘格', fn: strategyCheckerboard },
-    { name: '分区递归', fn: strategyPartition },
-    { name: '密集随机', fn: strategyDenseRandom },
-  ];
+  // 根据难度选择配置
+  let profile: typeof DIFFICULTY_PROFILES.easy;
+  let profileName: string;
 
-  // 每个策略的尝试计数
-  const attemptCounts: Record<string, number> = {};
-  strategies.forEach(s => attemptCounts[s.name] = 0);
+  if (difficulty <= 2) {
+    profile = DIFFICULTY_PROFILES.easy;
+    profileName = '简单';
+  } else if (difficulty <= 4) {
+    profile = DIFFICULTY_PROFILES.medium;
+    profileName = '中等';
+  } else {
+    profile = DIFFICULTY_PROFILES.hard;
+    profileName = '困难';
+  }
 
-  // 创建单个策略的异步迭代器
-  async function runStrategy(strategy: typeof strategies[0]): Promise<{ result: { types: CellType[][]; solution: Set<string> }; strategy: string } | null> {
-    for (let attempt = 0; attempt < maxAttemptsPerStrategy; attempt++) {
-      attemptCounts[strategy.name] = attempt + 1;
+  // 根据难度调整棋盘大小
+  let actualSize = size;
+  if (difficulty <= 2 && size > 7) {
+    actualSize = random(5, 7);  // 简单强制小棋盘
+  } else if (difficulty === 3 && size < 10) {
+    actualSize = 10;  // 中等强制10x10
+  } else if (difficulty >= 4 && size < 15) {
+    actualSize = random(15, Math.min(25, size + 5));  // 困难大棋盘
+  }
 
-      if (attempt % 10 === 0) {
-        onProgress?.(strategy.name, attempt);
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-
-      const result = strategy.fn(size, difficulty);
-      if (result) {
-        console.log(`策略 [${strategy.name}] 成功，尝试 ${attempt + 1} 次`);
-        return { result, strategy: strategy.name };
-      }
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt % 20 === 0) {
+      onProgress?.(attempt, maxAttempts);
+      await new Promise(resolve => requestAnimationFrame(resolve));
     }
-    return null;
-  }
 
-  // 并行运行所有策略，使用 Promise.race 竞争
-  const strategyPromises = strategies.map(s => runStrategy(s));
-
-  // 同时启动所有策略，任一成功立即返回
-  const winner = await Promise.race([
-    ...strategyPromises,
-    // 添加一个永不解决的 Promise 作为保底，防止所有策略同时失败
-    new Promise<null>(() => {})
-  ]);
-
-  if (winner) {
-    return {
-      types: winner.result.types,
-      solution: winner.result.solution,
-      strategy: winner.strategy
-    };
-  }
-
-  // 如果没有立即获胜者，等待所有策略完成看是否有成功者
-  const results = await Promise.allSettled(strategyPromises);
-
-  for (const result of results) {
-    if (result.status === 'fulfilled' && result.value) {
+    const result = generateAttempt(actualSize, profile);
+    if (result) {
+      console.log(`[${profileName}] ${actualSize}x${actualSize} 谜题生成成功，尝试 ${attempt + 1} 次`);
       return {
-        types: result.value.result.types,
-        solution: result.value.result.solution,
-        strategy: result.value.strategy
+        types: result.types,
+        solution: result.solution,
+        profile: profileName
       };
     }
   }
 
-  console.log('所有策略均失败');
+  // 失败后尝试放宽条件
+  console.log(`标准配置失败，尝试放宽条件...`);
+  const relaxedProfile = { ...profile, blackRatio: profile.blackRatio * 0.8 };
+
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const result = generateAttempt(actualSize, relaxedProfile);
+    if (result) {
+      console.log(`[${profileName}] ${actualSize}x${actualSize} 谜题生成成功(放宽条件)，尝试 ${attempt + 1} 次`);
+      return {
+        types: result.types,
+        solution: result.solution,
+        profile: profileName
+      };
+    }
+  }
+
   return null;
 }
 
 /**
- * 同步生成谜题（串行 fallback）
+ * 同步生成谜题
  */
 export function generatePuzzleSync(
   size: number,
   difficulty: number
 ): { types: CellType[][]; solution: Set<string> } | null {
-  const strategies = [
-    strategyGreedyCoverage,
-    strategyScanline,
-    strategyCheckerboard,
-    strategyPartition,
-    strategyDenseRandom,
-  ];
 
-  for (let round = 0; round < 100; round++) {
-    for (const strategy of strategies) {
-      const result = strategy(size, difficulty);
-      if (result) return result;
-    }
+  let profile: typeof DIFFICULTY_PROFILES.easy;
+
+  if (difficulty <= 2) {
+    profile = DIFFICULTY_PROFILES.easy;
+  } else if (difficulty <= 4) {
+    profile = DIFFICULTY_PROFILES.medium;
+  } else {
+    profile = DIFFICULTY_PROFILES.hard;
+  }
+
+  let actualSize = size;
+  if (difficulty <= 2 && size > 7) {
+    actualSize = random(5, 7);
+  } else if (difficulty === 3 && size < 10) {
+    actualSize = 10;
+  } else if (difficulty >= 4 && size < 15) {
+    actualSize = random(15, Math.min(25, size + 5));
+  }
+
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const result = generateAttempt(actualSize, profile);
+    if (result) return result;
   }
 
   return null;
