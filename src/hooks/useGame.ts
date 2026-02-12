@@ -39,14 +39,15 @@ export function useGame() {
       const result = await generatePuzzle(
         newSize,
         newDifficulty,
-        2000, // 最多尝试 2000 次
-        (attempt, max) => {
-          const progress = Math.min(90, Math.round((attempt / max) * 100));
+        200, // 每个策略最多尝试 200 次
+        (_strategyName, attempt) => {
+          const progress = Math.min(90, Math.round((attempt / 200) * 100));
           setGenerateProgress(progress);
         }
       );
 
       if (result) {
+        console.log(`使用策略 [${result.strategy}] 生成成功`);
         const newGrid = createEmptyGrid(newSize, result.types);
         updateIllumination(newGrid);
 
