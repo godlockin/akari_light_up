@@ -13,7 +13,7 @@ import { useHistory } from './useHistory';
 import {
   getRandomPuzzleFromBank,
   convertPuzzleEntry,
-} from '../data/puzzleBank';
+} from '../data/puzzles/index';
 
 export function useGame() {
   const [grid, setGrid] = useState<Cell[][]>([]);
