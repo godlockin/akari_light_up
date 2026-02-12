@@ -145,6 +145,25 @@ function App() {
           )}
         </div>
 
+        {/* Rules */}
+        {!grid.length && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">📜 游戏规则</h2>
+            <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+              <div className="space-y-2">
+                <p><span className="font-semibold text-blue-600">1.</span> 点击白格放置灯泡 💡，照亮整行整列</p>
+                <p><span className="font-semibold text-blue-600">2.</span> 黑格（墙壁）会阻挡光线传播</p>
+                <p><span className="font-semibold text-blue-600">3.</span> 带数字的黑格：周围4格必须有对应数量的灯</p>
+              </div>
+              <div className="space-y-2">
+                <p><span className="font-semibold text-blue-600">4.</span> 任意两个灯泡不能互相照到（红框错误提示）</p>
+                <p><span className="font-semibold text-blue-600">5.</span> 所有白格必须被照亮才能获胜</p>
+                <p><span className="font-semibold text-blue-600">6.</span> 点击循环：空白 → 灯泡 → 标记❌ → 空白</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Game Board */}
         {grid.length > 0 ? (
           <>
