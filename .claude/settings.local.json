@@ -16,7 +16,12 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(wrangler --version:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 自动重试谜题生成直到成功\n\n- 当生成失败时自动重试（最多5次）\n- 优化 wrangler.toml 配置\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 自动重试谜题生成直到成功\n\n- 当生成失败时自动重试（最多5次）\n- 优化 wrangler.toml 配置\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(wrangler pages deploy:*)",
+      "Bash(wrangler pages project list:*)",
+      "Bash(wrangler pages project create:*)",
+      "Bash(git commit:*)",
+      "Bash(wrangler pages deployment list:*)"
     ]
   }
 }

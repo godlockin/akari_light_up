@@ -24,6 +24,18 @@ function randomChoice<T>(arr: T[]): T {
 }
 
 /**
+ * 打乱数组
+ */
+function shuffle<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
  * 获取对称位置
  */
 function getSymmetricPositions(
@@ -36,19 +48,15 @@ function getSymmetricPositions(
 
   switch (symmetry) {
     case 'center':
-      // 中心对称
       positions.push({ row: size - 1 - row, col: size - 1 - col });
       break;
     case 'horizontal':
-      // 水平对称
       positions.push({ row: size - 1 - row, col });
       break;
     case 'vertical':
-      // 垂直对称
       positions.push({ row, col: size - 1 - col });
       break;
     case 'both':
-      // 水平和垂直对称（四象限对称）
       positions.push({ row: size - 1 - row, col });
       positions.push({ row, col: size - 1 - col });
       positions.push({ row: size - 1 - row, col: size - 1 - col });
@@ -73,15 +81,12 @@ function generateTemplate(
   const used = new Set<string>();
   const targetCount = Math.floor(size * size * blackRatio);
 
-  // 获取所有可能的中心位置
   const centerPositions: Position[] = [];
   const center = Math.floor(size / 2);
 
-  // 根据对称类型，确定需要填充的基础区域
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
       if (symmetry === 'center' || symmetry === 'both') {
-        // 只需要填充一半区域
         if (row * size + col < (size * size) / 2) {
           centerPositions.push({ row, col });
         }
@@ -99,8 +104,7 @@ function generateTemplate(
     }
   }
 
-  // 随机选择位置
-  const shuffled = [...centerPositions].sort(() => Math.random() - 0.5);
+  const shuffled = shuffle(centerPositions);
 
   for (const pos of shuffled) {
     if (blackCells.length >= targetCount) break;
@@ -127,13 +131,12 @@ function generateTemplate(
 }
 
 /**
- * 逆向生成灯泡解
+ * 逆向生成灯泡解 - 改进版，确保有解
  */
 function generateSolution(
   size: number,
   blackCells: Position[]
 ): { bulbs: Set<string>; types: CellType[][] } {
-  // 初始化类型网格
   const types: CellType[][] = [];
   for (let row = 0; row < size; row++) {
     types[row] = [];
@@ -142,14 +145,10 @@ function generateSolution(
     }
   }
 
-  // 标记黑格
-  const blackSet = new Set<string>();
   for (const pos of blackCells) {
     types[pos.row][pos.col] = 'black';
-    blackSet.add(posToString(pos.row, pos.col));
   }
 
-  // 获取所有白格
   const whiteCells: Position[] = [];
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
@@ -159,11 +158,8 @@ function generateSolution(
     }
   }
 
-  // 使用贪心 + 回溯放置灯泡
   const bulbs = new Set<string>();
-  const illuminated = new Set<string>();
 
-  // 获取灯泡能照亮的格子
   const getIlluminatedBy = (row: number, col: number): Set<string> => {
     const result = new Set<string>();
     result.add(posToString(row, col));
@@ -187,38 +183,49 @@ function generateSolution(
     return result;
   };
 
-  // 检查是否可以放灯（不冲突）
-  const canPlaceBulb = (row: number, col: number): boolean => {
-    const key = posToString(row, col);
-    if (illuminated.has(key)) return false;
-    return true;
-  };
+  // 使用最大覆盖贪心策略
+  const uncoveredCells = new Set(whiteCells.map(p => posToString(p.row, p.col)));
 
-  // 贪心放置
-  const shuffledWhite = [...whiteCells].sort(() => Math.random() - 0.5);
+  while (uncoveredCells.size > 0) {
+    let bestPos: Position | null = null;
+    let bestCoverage = 0;
 
-  for (const pos of shuffledWhite) {
-    const key = posToString(pos.row, pos.col);
-    if (illuminated.has(key)) continue;
+    // 找能覆盖最多未照亮格子的位置
+    for (const pos of whiteCells) {
+      const key = posToString(pos.row, pos.col);
+      if (bulbs.has(key)) continue;
 
-    if (canPlaceBulb(pos.row, pos.col)) {
-      bulbs.add(key);
-      const newIlluminated = getIlluminatedBy(pos.row, pos.col);
-      for (const cell of newIlluminated) {
-        illuminated.add(cell);
+      const illuminatedBy = getIlluminatedBy(pos.row, pos.col);
+      let coverage = 0;
+      for (const cell of illuminatedBy) {
+        if (uncoveredCells.has(cell)) coverage++;
+      }
+
+      if (coverage > bestCoverage) {
+        bestCoverage = coverage;
+        bestPos = pos;
       }
     }
-  }
 
-  // 检查是否所有白格都被照亮
-  for (const pos of whiteCells) {
-    const key = posToString(pos.row, pos.col);
-    if (!illuminated.has(key)) {
-      // 有未照亮的格子，强制放置
+    if (bestPos && bestCoverage > 0) {
+      const key = posToString(bestPos.row, bestPos.col);
       bulbs.add(key);
-      const newIlluminated = getIlluminatedBy(pos.row, pos.col);
-      for (const cell of newIlluminated) {
-        illuminated.add(cell);
+      const illuminatedBy = getIlluminatedBy(bestPos.row, bestPos.col);
+      for (const cell of illuminatedBy) {
+        uncoveredCells.delete(cell);
+      }
+    } else {
+      // 强制放置一个灯
+      for (const cell of uncoveredCells) {
+        bulbs.add(cell);
+        const illuminatedBy = getIlluminatedBy(
+          parseInt(cell.split(',')[0]),
+          parseInt(cell.split(',')[1])
+        );
+        for (const c of illuminatedBy) {
+          uncoveredCells.delete(c);
+        }
+        break;
       }
     }
   }
@@ -242,7 +249,6 @@ function deriveNumbers(
     { dr: 0, dc: 1 },
   ];
 
-  // 统计每个黑格相邻的灯数量
   const blackCellsWithNumbers: { pos: Position; count: number }[] = [];
 
   for (let row = 0; row < size; row++) {
@@ -263,67 +269,189 @@ function deriveNumbers(
     }
   }
 
-  // 根据密度决定显示哪些数字
-  const showCount = Math.floor(blackCellsWithNumbers.length * clueDensity);
-  const shuffled = [...blackCellsWithNumbers].sort(() => Math.random() - 0.5);
+  const showCount = Math.max(1, Math.floor(blackCellsWithNumbers.length * clueDensity));
+  const shuffled = shuffle(blackCellsWithNumbers);
 
   for (let i = 0; i < shuffled.length; i++) {
     const { pos, count } = shuffled[i];
-    if (i < showCount) {
+    if (i < showCount && count <= 4) {
       types[pos.row][pos.col] = `black-${count}` as CellType;
     }
   }
 }
 
 /**
- * 生成谜题
+ * 单次生成尝试
  */
-export function generatePuzzle(
+function singleAttempt(
   size: number,
-  difficulty: number
+  difficulty: number,
+  attemptBlackRatio?: number,
+  attemptClueDensity?: number,
+  attemptSymmetry?: SymmetryType
 ): { types: CellType[][]; solution: Set<string> } | null {
   const config = DIFFICULTY_CONFIG[difficulty];
-  const blackRatio = random(
+
+  const blackRatio = attemptBlackRatio ?? random(
     Math.round(config.blackRatio[0] * 100),
     Math.round(config.blackRatio[1] * 100)
   ) / 100;
-  const clueDensity = random(
+
+  const clueDensity = attemptClueDensity ?? random(
     Math.round(config.clueDensity[0] * 100),
     Math.round(config.clueDensity[1] * 100)
   ) / 100;
 
-  // 选择对称类型
   const symmetries: SymmetryType[] = ['center', 'horizontal', 'vertical', 'both', 'none'];
-  const symmetry = randomChoice(symmetries);
+  const symmetry = attemptSymmetry ?? randomChoice(symmetries);
 
-  // 最多尝试100次
-  for (let attempt = 0; attempt < 100; attempt++) {
-    // 生成模板
-    const blackCells = generateTemplate(size, blackRatio, symmetry);
+  const blackCells = generateTemplate(size, blackRatio, symmetry);
+  const { bulbs, types } = generateSolution(size, blackCells);
+  deriveNumbers(types, bulbs, clueDensity);
 
-    // 逆向生成解
-    const { bulbs, types } = generateSolution(size, blackCells);
+  const result = solve(types);
+  if (result.solvable && result.unique) {
+    return { types, solution: result.solution };
+  }
 
-    // 推导数字
-    deriveNumbers(types, bulbs, clueDensity);
+  return null;
+}
 
-    // 验证唯一解
-    const result = solve(types);
-    if (result.solvable && result.unique) {
-      return { types, solution: result.solution };
+/**
+ * 生成谜题 - 增强版，带进度回调
+ */
+export async function generatePuzzle(
+  size: number,
+  difficulty: number,
+  maxAttempts: number = 2000,
+  onProgress?: (attempt: number, maxAttempts: number) => void
+): Promise<{ types: CellType[][]; solution: Set<string> } | null> {
+  const config = DIFFICULTY_CONFIG[difficulty];
+
+  // 策略1: 使用配置范围内的参数
+  for (let attempt = 0; attempt < Math.min(maxAttempts / 3, 500); attempt++) {
+    if (attempt % 50 === 0) {
+      onProgress?.(attempt, maxAttempts);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    const result = singleAttempt(size, difficulty);
+    if (result) {
+      console.log(`谜题生成成功，尝试次数: ${attempt + 1}`);
+      return result;
     }
   }
 
-  // 如果失败，尝试更简单的配置
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const simplerBlackRatio = Math.max(0.15, blackRatio - 0.05);
-    const blackCells = generateTemplate(size, simplerBlackRatio, symmetry);
-    const { bulbs, types } = generateSolution(size, blackCells);
-    deriveNumbers(types, bulbs, 0.8); // 更高的数字密度
+  // 策略2: 降低黑格密度，增加成功率
+  const easierBlackRatio: [number, number] = [
+    Math.max(0.1, config.blackRatio[0] - 0.05),
+    Math.max(0.15, config.blackRatio[1] - 0.05)
+  ];
 
-    const result = solve(types);
-    if (result.solvable && result.unique) {
-      return { types, solution: result.solution };
+  for (let attempt = 0; attempt < Math.min(maxAttempts / 3, 500); attempt++) {
+    if (attempt % 50 === 0) {
+      onProgress?.(attempt + 500, maxAttempts);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    const blackRatio = random(
+      Math.round(easierBlackRatio[0] * 100),
+      Math.round(easierBlackRatio[1] * 100)
+    ) / 100;
+    const clueDensity = random(50, 90) / 100;
+
+    const symmetries: SymmetryType[] = ['center', 'horizontal', 'vertical', 'both', 'none'];
+    const result = singleAttempt(size, difficulty, blackRatio, clueDensity, randomChoice(symmetries));
+    if (result) {
+      console.log(`谜题生成成功(策略2)，尝试次数: ${attempt + 501}`);
+      return result;
+    }
+  }
+
+  // 策略3: 使用固定对称性和更高数字密度
+  const fixedSymmetries: SymmetryType[] = ['center', 'horizontal', 'vertical'];
+  for (const symmetry of fixedSymmetries) {
+    for (let attempt = 0; attempt < 200; attempt++) {
+      if (attempt % 50 === 0) {
+        onProgress?.(attempt + 1000, maxAttempts);
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      const blackRatio = random(15, 25) / 100;
+      const clueDensity = random(60, 100) / 100;
+
+      const result = singleAttempt(size, difficulty, blackRatio, clueDensity, symmetry);
+      if (result) {
+        console.log(`谜题生成成功(策略3-${symmetry})，尝试次数: ${attempt + 1001}`);
+        return result;
+      }
+    }
+  }
+
+  // 最终策略: 极简配置，确保能生成
+  for (let attempt = 0; attempt < 500; attempt++) {
+    if (attempt % 100 === 0) {
+      onProgress?.(attempt + 1600, maxAttempts);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    const blackRatio = random(10, 20) / 100;
+    const clueDensity = 0.9;
+
+    const result = singleAttempt(size, difficulty, blackRatio, clueDensity, 'center');
+    if (result) {
+      console.log(`谜题生成成功(最终策略)，尝试次数: ${attempt + 1601}`);
+      return result;
+    }
+  }
+
+  console.log(`谜题生成失败，已达到最大尝试次数: ${maxAttempts}`);
+  return null;
+}
+
+/**
+ * 同步生成谜题（用于兼容性）
+ */
+export function generatePuzzleSync(
+  size: number,
+  difficulty: number
+): { types: CellType[][]; solution: Set<string> } | null {
+  const config = DIFFICULTY_CONFIG[difficulty];
+
+  // 尝试多种策略
+  for (let strategy = 0; strategy < 5; strategy++) {
+    const blackRatioRange: [number, number] = strategy === 0
+      ? config.blackRatio
+      : [Math.max(0.1, config.blackRatio[0] - 0.05 * strategy), Math.max(0.15, config.blackRatio[1] - 0.05 * strategy)];
+
+    const clueDensityRange: [number, number] = strategy < 2
+      ? config.clueDensity
+      : [0.5, 0.9];
+
+    for (let attempt = 0; attempt < 300; attempt++) {
+      const blackRatio = random(
+        Math.round(blackRatioRange[0] * 100),
+        Math.round(blackRatioRange[1] * 100)
+      ) / 100;
+
+      const clueDensity = random(
+        Math.round(clueDensityRange[0] * 100),
+        Math.round(clueDensityRange[1] * 100)
+      ) / 100;
+
+      const symmetries: SymmetryType[] = strategy < 3
+        ? ['center', 'horizontal', 'vertical', 'both', 'none']
+        : ['center', 'horizontal'];
+      const symmetry = randomChoice(symmetries);
+
+      const blackCells = generateTemplate(size, blackRatio, symmetry);
+      const { bulbs, types } = generateSolution(size, blackCells);
+      deriveNumbers(types, bulbs, clueDensity);
+
+      const result = solve(types);
+      if (result.solvable && result.unique) {
+        return { types, solution: result.solution };
+      }
     }
   }
 

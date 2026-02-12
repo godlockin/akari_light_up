@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Cell, CellType, GameStatus } from '../core/types';
-import { generatePuzzle } from '../core/generator';
+import { generatePuzzle, generatePuzzleSync } from '../core/generator';
 import {
   createEmptyGrid,
   cloneGrid,
@@ -19,25 +19,32 @@ export function useGame() {
   const [solution, setSolution] = useState<Set<string>>(new Set());
   const [hintMessage, setHintMessage] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState(0);
 
   const startTimeRef = useRef<number | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
 
   const { pushState, undo: undoHistory, redo: redoHistory, reset: resetHistory, canUndo, canRedo } = useHistory();
 
-  const generateNewPuzzle = useCallback((newSize: number, newDifficulty: number, maxRetries = 5) => {
+  // 异步生成谜题，带重试和进度
+  const generateNewPuzzle = useCallback(async (newSize: number, newDifficulty: number) => {
     setIsGenerating(true);
+    setGenerateProgress(0);
 
-    // 使用 setTimeout 让 UI 有机会更新
-    setTimeout(() => {
-      let result = null;
-      let attempts = 0;
+    // 使用 requestAnimationFrame 让 UI 更新
+    await new Promise(resolve => requestAnimationFrame(resolve));
 
-      // 自动重试直到成功或达到最大重试次数
-      while (!result && attempts < maxRetries) {
-        result = generatePuzzle(newSize, newDifficulty);
-        attempts++;
-      }
+    try {
+      // 优先使用异步生成，支持进度回调
+      const result = await generatePuzzle(
+        newSize,
+        newDifficulty,
+        2000, // 最多尝试 2000 次
+        (attempt, max) => {
+          const progress = Math.min(90, Math.round((attempt / max) * 100));
+          setGenerateProgress(progress);
+        }
+      );
 
       if (result) {
         const newGrid = createEmptyGrid(newSize, result.types);
@@ -55,16 +62,38 @@ export function useGame() {
         const now = Date.now();
         startTimeRef.current = now;
         setStartTime(now);
-
-        if (attempts > 1) {
-          console.log(`谜题生成成功，重试次数: ${attempts}`);
-        }
       } else {
-        alert('生成谜题失败，请尝试其他难度或尺寸');
-      }
+        // 如果异步生成失败，尝试同步生成作为后备
+        console.log('异步生成失败，尝试同步生成...');
+        const syncResult = generatePuzzleSync(newSize, newDifficulty);
 
+        if (syncResult) {
+          const newGrid = createEmptyGrid(newSize, syncResult.types);
+          updateIllumination(newGrid);
+
+          setGrid(newGrid);
+          setSize(newSize);
+          setDifficulty(newDifficulty);
+          setSolution(syncResult.solution);
+          setStatus('playing');
+          setHintMessage('');
+          resetHistory();
+          pushState(newGrid);
+
+          const now = Date.now();
+          startTimeRef.current = now;
+          setStartTime(now);
+        } else {
+          alert('生成谜题失败，请尝试其他难度或尺寸');
+        }
+      }
+    } catch (error) {
+      console.error('生成谜题时出错:', error);
+      alert('生成谜题时出错，请重试');
+    } finally {
       setIsGenerating(false);
-    }, 10);
+      setGenerateProgress(0);
+    }
   }, [pushState, resetHistory]);
 
   const handleCellClick = useCallback((row: number, col: number) => {
@@ -191,6 +220,7 @@ export function useGame() {
     difficulty,
     status,
     isGenerating,
+    generateProgress,
     generatePuzzle: generateNewPuzzle,
     handleCellClick,
     resetGame,

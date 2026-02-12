@@ -8,6 +8,8 @@ function App() {
   const {
     grid,
     status,
+    isGenerating,
+    generateProgress,
     generatePuzzle,
     handleCellClick,
     resetGame,
@@ -42,7 +44,7 @@ function App() {
     { value: 5, label: '专家' },
   ]
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     let finalSize = selectedSize
     if (selectedSize === 0) {
       const parsed = parseInt(customSize, 10)
@@ -52,7 +54,7 @@ function App() {
       }
       finalSize = parsed
     }
-    generatePuzzle(finalSize, selectedDifficulty)
+    await generatePuzzle(finalSize, selectedDifficulty)
   }
 
   const handleSizeChange = (value: number) => {
@@ -75,7 +77,8 @@ function App() {
               <select
                 value={selectedSize}
                 onChange={(e) => handleSizeChange(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isGenerating}
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 {sizeOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -90,8 +93,9 @@ function App() {
                   max={25}
                   value={customSize}
                   onChange={(e) => setCustomSize(e.target.value)}
+                  disabled={isGenerating}
                   placeholder="5-25"
-                  className="border border-gray-300 rounded px-3 py-2 w-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-gray-300 rounded px-3 py-2 w-20 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 />
               )}
             </div>
@@ -101,7 +105,8 @@ function App() {
               <select
                 value={selectedDifficulty}
                 onChange={(e) => setSelectedDifficulty(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isGenerating}
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 {difficultyOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -113,11 +118,31 @@ function App() {
 
             <button
               onClick={handleGenerate}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded transition-colors"
+              disabled={isGenerating}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-semibold px-6 py-2 rounded transition-colors"
             >
-              生成新挑战
+              {isGenerating ? '生成中...' : '生成新挑战'}
             </button>
           </div>
+
+          {/* Progress Bar */}
+          {isGenerating && (
+            <div className="mt-4">
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>正在生成谜题...</span>
+                <span>{generateProgress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${generateProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                正在尝试多种策略生成有效谜题，请稍候...
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Game Board */}
