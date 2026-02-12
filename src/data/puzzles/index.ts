@@ -1,4 +1,5 @@
 import { CellType } from '../../core/types';
+import { UltraCompactPuzzle, decompressPuzzle } from './codec';
 import { PUZZLES_5X5 } from './5x5';
 import { PUZZLES_6X6 } from './6x6';
 import { PUZZLES_7X7 } from './7x7';
@@ -29,6 +30,9 @@ export interface CompactPuzzle {
   t: CellType[][];  // types
   s: string[];      // solution
 }
+
+// 兼容两种格式
+export type AnyCompactPuzzle = CompactPuzzle | UltraCompactPuzzle;
 
 export interface PuzzleEntry {
   id: string;
@@ -83,14 +87,24 @@ function flipPosV(pos: string, size: number): string {
 
 /** 应用随机变换到谜题 */
 export function transformCompactPuzzle(
-  puzzle: CompactPuzzle,
+  puzzle: AnyCompactPuzzle,
   size: number,
   rotation: number = 0,
   flipH: boolean = false,
   flipV: boolean = false
 ): CompactPuzzle {
-  let types = puzzle.t.map(row => [...row]);
-  let solution = [...puzzle.s];
+  // 先转换为标准格式
+  let compact: CompactPuzzle;
+  if ('b' in puzzle) {
+    // UltraCompactPuzzle
+    compact = decompressPuzzle(puzzle, size);
+  } else {
+    // CompactPuzzle
+    compact = puzzle;
+  }
+
+  let types = compact.t.map(row => [...row]);
+  let solution = [...compact.s];
 
   if (flipH) {
     types = flipTypesH(types);
@@ -111,7 +125,7 @@ export function transformCompactPuzzle(
 }
 
 /** 获取随机变换的谜题 */
-export function getRandomTransformedPuzzle(puzzle: CompactPuzzle, size: number): CompactPuzzle {
+export function getRandomTransformedPuzzle(puzzle: AnyCompactPuzzle, size: number): CompactPuzzle {
   const rotation = Math.floor(Math.random() * 4);
   const flipH = Math.random() < 0.5;
   const flipV = Math.random() < 0.5;
@@ -120,7 +134,7 @@ export function getRandomTransformedPuzzle(puzzle: CompactPuzzle, size: number):
 
 // ==================== 获取谜题 ====================
 
-const PUZZLE_MAP: Record<number, CompactPuzzle[]> = {
+const PUZZLE_MAP: Record<number, AnyCompactPuzzle[]> = {
   5: PUZZLES_5X5,
   6: PUZZLES_6X6,
   7: PUZZLES_7X7,
