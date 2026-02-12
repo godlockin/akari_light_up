@@ -25,12 +25,19 @@ export function useGame() {
 
   const { pushState, undo: undoHistory, redo: redoHistory, reset: resetHistory, canUndo, canRedo } = useHistory();
 
-  const generateNewPuzzle = useCallback((newSize: number, newDifficulty: number) => {
+  const generateNewPuzzle = useCallback((newSize: number, newDifficulty: number, maxRetries = 5) => {
     setIsGenerating(true);
 
     // 使用 setTimeout 让 UI 有机会更新
     setTimeout(() => {
-      const result = generatePuzzle(newSize, newDifficulty);
+      let result = null;
+      let attempts = 0;
+
+      // 自动重试直到成功或达到最大重试次数
+      while (!result && attempts < maxRetries) {
+        result = generatePuzzle(newSize, newDifficulty);
+        attempts++;
+      }
 
       if (result) {
         const newGrid = createEmptyGrid(newSize, result.types);
@@ -48,8 +55,12 @@ export function useGame() {
         const now = Date.now();
         startTimeRef.current = now;
         setStartTime(now);
+
+        if (attempts > 1) {
+          console.log(`谜题生成成功，重试次数: ${attempts}`);
+        }
       } else {
-        alert('生成谜题失败，请重试');
+        alert('生成谜题失败，请尝试其他难度或尺寸');
       }
 
       setIsGenerating(false);

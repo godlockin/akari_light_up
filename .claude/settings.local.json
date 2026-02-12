@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.bilibili.com)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 美术馆亮灯挑战游戏\n\n- React + TypeScript + Vite 构建\n- 支持 5×5 到 25×25 自定义棋盘\n- 5级难度（入门/简单/中等/困难/专家）\n- 完整游戏功能：提示、撤销/重做、重置、计时器\n- 实时错误检测（灯照灯、数字超限）\n- 谜题生成算法（模板填充 + 逆向生成）\n- 求解器（约束传播 + 回溯）\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(wrangler --version:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 自动重试谜题生成直到成功\n\n- 当生成失败时自动重试（最多5次）\n- 优化 wrangler.toml 配置\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}

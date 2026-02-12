@@ -1,0 +1,29 @@
+# .claudeignore - Exclude files from Claude context
+
+# Build outputs
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Cache
+.cache/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+
+# Large files
+*.pdf
+*.zip
+*.tar.gz
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
