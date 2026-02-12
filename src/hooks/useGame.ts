@@ -10,6 +10,7 @@ import {
   getHintPosition,
 } from '../core/solver';
 import { useHistory } from './useHistory';
+import { getDefaultPuzzle, convertDefaultPuzzle } from '../data/defaultPuzzles';
 
 export function useGame() {
   const [grid, setGrid] = useState<Cell[][]>([]);
@@ -20,29 +21,71 @@ export function useGame() {
   const [hintMessage, setHintMessage] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateProgress, setGenerateProgress] = useState(0);
+  const [isUsingDefault, setIsUsingDefault] = useState(false);
 
   const startTimeRef = useRef<number | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
 
   const { pushState, undo: undoHistory, redo: redoHistory, reset: resetHistory, canUndo, canRedo } = useHistory();
 
-  // 异步生成谜题，带重试和进度
+  // 加载默认谜题
+  const loadDefaultPuzzle = useCallback((newSize: number, newDifficulty: number) => {
+    const defaultPuzzle = getDefaultPuzzle(newSize, newDifficulty);
+
+    if (defaultPuzzle) {
+      console.log(`使用默认谜题: ${defaultPuzzle.name}`);
+      const converted = convertDefaultPuzzle(defaultPuzzle);
+      const newGrid = createEmptyGrid(defaultPuzzle.size, converted.types);
+      updateIllumination(newGrid);
+
+      setGrid(newGrid);
+      setSize(defaultPuzzle.size);
+      setDifficulty(newDifficulty);
+      setSolution(converted.solution);
+      setStatus('playing');
+      setHintMessage('');
+      setIsUsingDefault(true);
+      resetHistory();
+      pushState(newGrid);
+
+      const now = Date.now();
+      startTimeRef.current = now;
+      setStartTime(now);
+
+      return true;
+    }
+
+    return false;
+  }, [pushState, resetHistory]);
+
+  // 异步生成谜题，带重试和默认题目 fallback
   const generateNewPuzzle = useCallback(async (newSize: number, newDifficulty: number) => {
     setIsGenerating(true);
     setGenerateProgress(0);
+    setIsUsingDefault(false);
 
     // 使用 requestAnimationFrame 让 UI 更新
     await new Promise(resolve => requestAnimationFrame(resolve));
+
+    // 设置超时时间（3秒）
+    const TIMEOUT = 3000;
+    const startTime = Date.now();
 
     try {
       // 优先使用异步生成，支持进度回调
       const result = await generatePuzzle(
         newSize,
         newDifficulty,
-        500, // 最多尝试 500 次
+        200, // 最多尝试 200 次
         (attempt) => {
-          const progress = Math.min(90, Math.round((attempt / 500) * 100));
+          const progress = Math.min(90, Math.round((attempt / 200) * 100));
           setGenerateProgress(progress);
+
+          // 检查是否超时
+          if (Date.now() - startTime > TIMEOUT) {
+            console.log('生成超时，切换到默认谜题');
+            throw new Error('TIMEOUT');
+          }
         }
       );
 
@@ -57,6 +100,7 @@ export function useGame() {
         setSolution(result.solution);
         setStatus('playing');
         setHintMessage('');
+        setIsUsingDefault(false);
         resetHistory();
         pushState(newGrid);
 
@@ -64,8 +108,18 @@ export function useGame() {
         startTimeRef.current = now;
         setStartTime(now);
       } else {
-        // 如果异步生成失败，尝试同步生成作为后备
-        console.log('异步生成失败，尝试同步生成...');
+        // 如果异步生成返回 null，尝试 fallback
+        throw new Error('GENERATION_FAILED');
+      }
+    } catch (error) {
+      console.log('实时生成失败，尝试使用默认谜题...');
+
+      // 尝试加载默认谜题
+      const loaded = loadDefaultPuzzle(newSize, newDifficulty);
+
+      if (!loaded) {
+        // 如果没有合适的默认谜题，尝试同步生成作为最后手段
+        console.log('尝试同步生成...');
         const syncResult = generatePuzzleSync(newSize, newDifficulty);
 
         if (syncResult) {
@@ -78,6 +132,7 @@ export function useGame() {
           setSolution(syncResult.solution);
           setStatus('playing');
           setHintMessage('');
+          setIsUsingDefault(false);
           resetHistory();
           pushState(newGrid);
 
@@ -88,14 +143,11 @@ export function useGame() {
           alert('生成谜题失败，请尝试其他难度或尺寸');
         }
       }
-    } catch (error) {
-      console.error('生成谜题时出错:', error);
-      alert('生成谜题时出错，请重试');
     } finally {
       setIsGenerating(false);
       setGenerateProgress(0);
     }
-  }, [pushState, resetHistory]);
+  }, [pushState, resetHistory, loadDefaultPuzzle]);
 
   const handleCellClick = useCallback((row: number, col: number) => {
     if (status !== 'playing') return;
@@ -222,6 +274,7 @@ export function useGame() {
     status,
     isGenerating,
     generateProgress,
+    isUsingDefault,
     generatePuzzle: generateNewPuzzle,
     handleCellClick,
     resetGame,

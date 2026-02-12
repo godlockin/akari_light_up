@@ -10,6 +10,7 @@ function App() {
     status,
     isGenerating,
     generateProgress,
+    isUsingDefault,
     generatePuzzle,
     handleCellClick,
     resetGame,
@@ -167,6 +168,13 @@ function App() {
         {/* Game Board */}
         {grid.length > 0 ? (
           <>
+            {isUsingDefault && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-700 text-center">
+                  📌 当前为预置谜题（实时生成超时，已自动切换至默认题库）
+                </p>
+              </div>
+            )}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <GameBoard
                 grid={grid}
