@@ -32,7 +32,12 @@
       "Bash(jq -r:*)",
       "Bash(node:*)",
       "Bash(git checkout:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(bun scripts/solver.ts:*)",
+      "Bash(bun -e:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(ls:*)",
+      "Bash(cargo build:*)"
     ]
   }
 }
