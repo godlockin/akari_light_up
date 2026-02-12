@@ -1,0 +1,9 @@
+# Cloudflare Pages 配置
+name = "akari-light-up"
+compatibility_date = "2026-02-12"
+
+[build]
+command = "npm run build"
+
+[site]
+bucket = "./dist"
