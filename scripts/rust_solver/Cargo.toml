@@ -1,0 +1,18 @@
+[package]
+name = "akari_solver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8"
+regex = "1.5"
+clap = { version = "4.0", features = ["derive"] }
+lazy_static = "1.4"
+
+[lib]
+name = "akari_solver_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "manager"
+path = "src/main.rs"

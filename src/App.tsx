@@ -22,45 +22,21 @@ function App() {
     startTime,
   } = useGame()
 
-  const [selectedSize, setSelectedSize] = useState<number>(7)
-  const [selectedDifficulty, setSelectedDifficulty] = useState<number>(2)
-  const [customSize, setCustomSize] = useState<string>('')
-  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [selectedSize, setSelectedSize] = useState<number>(5)
 
   const sizeOptions = [
     { value: 5, label: '5×5' },
+    { value: 6, label: '6×6' },
     { value: 7, label: '7×7' },
     { value: 10, label: '10×10' },
-    { value: 15, label: '15×15' },
-    { value: 20, label: '20×20' },
-    { value: 25, label: '25×25' },
-    { value: 0, label: '自定义' },
-  ]
-
-  const difficultyOptions = [
-    { value: 1, label: '入门' },
-    { value: 2, label: '简单' },
-    { value: 3, label: '中等' },
-    { value: 4, label: '困难' },
-    { value: 5, label: '专家' },
   ]
 
   const handleGenerate = async () => {
-    let finalSize = selectedSize
-    if (selectedSize === 0) {
-      const parsed = parseInt(customSize, 10)
-      if (isNaN(parsed) || parsed < 5 || parsed > 25) {
-        alert('请输入5-25之间的数字')
-        return
-      }
-      finalSize = parsed
-    }
-    await generatePuzzle(finalSize, selectedDifficulty)
+    await generatePuzzle(selectedSize)
   }
 
   const handleSizeChange = (value: number) => {
     setSelectedSize(value)
-    setShowCustomInput(value === 0)
   }
 
   return (
@@ -82,34 +58,6 @@ function App() {
                 className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 {sizeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {showCustomInput && (
-                <input
-                  type="number"
-                  min={5}
-                  max={25}
-                  value={customSize}
-                  onChange={(e) => setCustomSize(e.target.value)}
-                  disabled={isGenerating}
-                  placeholder="5-25"
-                  className="border border-gray-300 rounded px-3 py-2 w-20 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                />
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-gray-600">难度:</label>
-              <select
-                value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(Number(e.target.value))}
-                disabled={isGenerating}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {difficultyOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -171,7 +119,7 @@ function App() {
             {isUsingDefault && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-yellow-700 text-center">
-                  📌 当前为预置谜题（实时生成超时，已自动切换至默认题库）
+                  📌 当前为题库精选谜题（随机选择 + 随机变换）
                 </p>
               </div>
             )}
@@ -219,7 +167,7 @@ function App() {
         ) : (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <p className="text-gray-500 text-lg">
-              选择棋盘大小和难度，点击"生成新挑战"开始游戏
+              选择棋盘大小，点击"生成新挑战"开始游戏
             </p>
           </div>
         )}

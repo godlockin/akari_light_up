@@ -30,3 +30,12 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Rust
+scripts/rust_solver/target
+scripts/rust_solver/bin
+scripts/rust_solver/pkg
+scripts/rust_solver/.cargo_home
+scripts/rust_solver/.local_cargo
+scripts/rust_solver/target_local
+scripts/rust_solver/.tmp

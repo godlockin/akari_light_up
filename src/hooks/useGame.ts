@@ -18,7 +18,6 @@ import {
 export function useGame() {
   const [grid, setGrid] = useState<Cell[][]>([]);
   const [size, setSize] = useState(0);
-  const [difficulty, setDifficulty] = useState(0);
   const [status, setStatus] = useState<GameStatus>('idle');
   const [solution, setSolution] = useState<Set<string>>(new Set());
   const [hintMessage, setHintMessage] = useState<string>('');
@@ -32,8 +31,8 @@ export function useGame() {
   const { pushState, undo: undoHistory, redo: redoHistory, reset: resetHistory, canUndo, canRedo } = useHistory();
 
   // 加载默认谜题（从谜题库随机选择）
-  const loadDefaultPuzzle = useCallback((newSize: number, newDifficulty: number) => {
-    const puzzle = getRandomPuzzleFromBank(newSize, newDifficulty);
+  const loadDefaultPuzzle = useCallback((newSize: number) => {
+    const puzzle = getRandomPuzzleFromBank(newSize, 1);
 
     if (puzzle) {
       console.log(`使用谜题库谜题: ${puzzle.id}`);
@@ -43,7 +42,6 @@ export function useGame() {
 
       setGrid(newGrid);
       setSize(puzzle.size);
-      setDifficulty(newDifficulty);
       setSolution(converted.solution);
       setStatus('playing');
       setHintMessage('');
@@ -62,10 +60,18 @@ export function useGame() {
   }, [pushState, resetHistory]);
 
   // 异步生成谜题，带重试和默认题目 fallback
-  const generateNewPuzzle = useCallback(async (newSize: number, newDifficulty: number) => {
+  const generateNewPuzzle = useCallback(async (newSize: number) => {
     setIsGenerating(true);
     setGenerateProgress(0);
     setIsUsingDefault(false);
+
+    // 优先尝试从题库加载（对于已支持的尺寸）
+    if ([5, 6, 7, 10].includes(newSize)) {
+      if (loadDefaultPuzzle(newSize)) {
+        setIsGenerating(false);
+        return;
+      }
+    }
 
     // 使用 requestAnimationFrame 让 UI 更新
     await new Promise(resolve => requestAnimationFrame(resolve));
@@ -78,7 +84,7 @@ export function useGame() {
       // 优先使用异步生成，支持进度回调
       const result = await generatePuzzle(
         newSize,
-        newDifficulty,
+        1,
         200, // 最多尝试 200 次
         (attempt) => {
           const progress = Math.min(90, Math.round((attempt / 200) * 100));
@@ -99,7 +105,6 @@ export function useGame() {
 
         setGrid(newGrid);
         setSize(newSize);
-        setDifficulty(newDifficulty);
         setSolution(result.solution);
         setStatus('playing');
         setHintMessage('');
@@ -118,12 +123,12 @@ export function useGame() {
       console.log('实时生成失败，尝试使用默认谜题...');
 
       // 尝试加载默认谜题
-      const loaded = loadDefaultPuzzle(newSize, newDifficulty);
+      const loaded = loadDefaultPuzzle(newSize);
 
       if (!loaded) {
         // 如果没有合适的默认谜题，尝试同步生成作为最后手段
         console.log('尝试同步生成...');
-        const syncResult = generatePuzzleSync(newSize, newDifficulty);
+        const syncResult = generatePuzzleSync(newSize, 1);
 
         if (syncResult) {
           const newGrid = createEmptyGrid(newSize, syncResult.types);
@@ -131,7 +136,6 @@ export function useGame() {
 
           setGrid(newGrid);
           setSize(newSize);
-          setDifficulty(newDifficulty);
           setSolution(syncResult.solution);
           setStatus('playing');
           setHintMessage('');
@@ -273,7 +277,6 @@ export function useGame() {
   return {
     grid,
     size,
-    difficulty,
     status,
     isGenerating,
     generateProgress,

@@ -37,7 +37,11 @@
       "Bash(bun -e:*)",
       "Bash(git ls-tree:*)",
       "Bash(ls:*)",
-      "Bash(cargo build:*)"
+      "Bash(cargo build:*)",
+      "Bash(npx tsx:*)",
+      "Bash(bun validate_puzzles.ts:*)",
+      "Bash(python3:*)",
+      "Bash(bun:*)"
     ]
   }
 }
