@@ -26,7 +26,9 @@ export function useGame() {
   const [isUsingDefault, setIsUsingDefault] = useState(false);
 
   const startTimeRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [hintCount, setHintCount] = useState(0);
 
   const { pushState, undo: undoHistory, redo: redoHistory, reset: resetHistory, canUndo, canRedo } = useHistory();
 
@@ -45,6 +47,9 @@ export function useGame() {
       setSolution(converted.solution);
       setStatus('playing');
       setHintMessage('');
+      setStatus('playing');
+      setHintMessage('');
+      setHintCount(0);
       setIsUsingDefault(true);
       resetHistory();
       pushState(newGrid);
@@ -108,6 +113,9 @@ export function useGame() {
         setSolution(result.solution);
         setStatus('playing');
         setHintMessage('');
+        setStatus('playing');
+        setHintMessage('');
+        setHintCount(0);
         setIsUsingDefault(false);
         resetHistory();
         pushState(newGrid);
@@ -139,6 +147,9 @@ export function useGame() {
           setSolution(syncResult.solution);
           setStatus('playing');
           setHintMessage('');
+          setStatus('playing');
+          setHintMessage('');
+          setHintCount(0);
           setIsUsingDefault(false);
           resetHistory();
           pushState(newGrid);
@@ -202,7 +213,9 @@ export function useGame() {
 
     setGrid(newGrid);
     setStatus('playing');
+    setStatus('playing');
     setHintMessage('');
+    setHintCount(0);
     resetHistory();
     pushState(newGrid);
 
@@ -253,43 +266,62 @@ export function useGame() {
         newGrid[hint.position.row][hint.position.col].isHinted = true;
         return newGrid;
       });
-      setHintMessage(hint.reason);
+      newGrid[hint.position.row][hint.position.col].isHinted = true;
+      return newGrid;
+    });
 
-      // 3秒后清除提示
-      setTimeout(() => {
-        setGrid(prevGrid => {
-          const newGrid = cloneGrid(prevGrid);
-          for (let row = 0; row < newGrid.length; row++) {
-            for (let col = 0; col < newGrid[row].length; col++) {
-              newGrid[row][col].isHinted = false;
-            }
-          }
-          return newGrid;
-        });
-        setHintMessage('');
-      }, 3000);
-    } else {
-      setHintMessage('没有可用的提示');
-      setTimeout(() => setHintMessage(''), 3000);
+  // Calculate distinct bulbs count (solution size)
+  const totalBulbs = solution.size;
+  const penaltyThreshold = Math.floor(totalBulbs * 0.8);
+
+  // Calculate penalty: 2s usually, 20s if exceeding threshold
+  const penaltySeconds = hintCount < penaltyThreshold ? 2 : 20;
+  setHintCount(prev => prev + 1);
+
+  if (startTime) {
+    setStartTime(prev => prev ? prev - (penaltySeconds * 1000) : null);
+    if (startTimeRef.current) {
+      startTimeRef.current -= (penaltySeconds * 1000);
     }
+  }
+
+  setHintMessage(`${hint.reason} (+${penaltySeconds}秒)`);
+
+  // 3秒后清除提示
+  setTimeout(() => {
+    setGrid(prevGrid => {
+      const newGrid = cloneGrid(prevGrid);
+      for (let row = 0; row < newGrid.length; row++) {
+        for (let col = 0; col < newGrid[row].length; col++) {
+          newGrid[row][col].isHinted = false;
+        }
+      }
+      return newGrid;
+    });
+    setHintMessage('');
+  }, 3000);
+} else {
+  setHintMessage('没有可用的提示');
+  setTimeout(() => setHintMessage(''), 3000);
+}
   }, [status, solution, grid]);
 
-  return {
-    grid,
-    size,
-    status,
-    isGenerating,
-    generateProgress,
-    isUsingDefault,
-    generatePuzzle: generateNewPuzzle,
-    handleCellClick,
-    resetGame,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    getHint,
-    hintMessage,
-    startTime,
-  };
+return {
+  grid,
+  size,
+  status,
+  isGenerating,
+  generateProgress,
+  isUsingDefault,
+  generatePuzzle: generateNewPuzzle,
+  handleCellClick,
+  resetGame,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+  getHint,
+  hintMessage,
+  startTime,
+};
 }
