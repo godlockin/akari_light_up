@@ -1,0 +1,23 @@
+# Build
+dist
+build
+coverage
+
+# Dependencies
+node_modules
+
+# Generated
+*.d.ts
+*.tsbuildinfo
+
+# Rust
+scripts/rust_solver/target
+scripts/rust_solver/target_local
+scripts/rust_solver/.cargo_home
+scripts/rust_solver/.cargo_local
+
+
+# IDE
+.idea
+.vscode
+.DS_Store

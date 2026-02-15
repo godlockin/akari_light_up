@@ -29,6 +29,7 @@ function App() {
     { value: 6, label: '6×6' },
     { value: 7, label: '7×7' },
     { value: 10, label: '10×10' },
+    { value: 12, label: '12×12' },
   ]
 
   const handleGenerate = async () => {

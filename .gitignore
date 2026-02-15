@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node
 node_modules
 dist
 dist-ssr
@@ -15,6 +16,9 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 .idea
 .DS_Store
 *.suo
@@ -36,6 +40,38 @@ scripts/rust_solver/target
 scripts/rust_solver/bin
 scripts/rust_solver/pkg
 scripts/rust_solver/.cargo_home
+scripts/rust_solver/.cargo_local
 scripts/rust_solver/.local_cargo
 scripts/rust_solver/target_local
 scripts/rust_solver/.tmp
+scripts/rust_solver/**/*.rs.bk
+target/
+.cargo_local
+**/.cargo_local
+**/*.rs.bk
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+
+# JetBrains
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output

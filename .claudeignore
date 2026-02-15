@@ -3,22 +3,42 @@
 # Build outputs
 dist/
 build/
+out/
+target/
+scripts/rust_solver/target/
+scripts/rust_solver/target_local/
+scripts/rust_solver/pkg/
 
 # Dependencies
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Cargo.lock
 
 # Cache
 .cache/
 *.tsbuildinfo
+.eslintcache
+.stylelintcache
 
 # Environment files
 .env
 .env.*
 
-# Large files
+# Large files / Binary
 *.pdf
 *.zip
 *.tar.gz
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.eot
 
 # IDE
 .idea/
@@ -27,3 +47,10 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/

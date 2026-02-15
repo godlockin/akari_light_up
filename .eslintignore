@@ -1,0 +1,14 @@
+# Build
+dist
+build
+coverage
+
+# Dependencies
+node_modules
+
+# Rust
+scripts/rust_solver/
+
+# Config
+*.config.js
+*.config.ts

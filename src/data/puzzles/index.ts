@@ -4,6 +4,7 @@ import { PUZZLES_5X5 } from './5x5';
 import { PUZZLES_6X6 } from './6x6';
 import { PUZZLES_7X7 } from './7x7';
 import { PUZZLES_10X10 } from './10x10';
+import { PUZZLES_12X12 } from './12x12';
 
 // ==================== 类型定义 ====================
 export interface CompactPuzzle {
@@ -119,6 +120,7 @@ const PUZZLE_MAP: Record<number, AnyCompactPuzzle[]> = {
   6: PUZZLES_6X6,
   7: PUZZLES_7X7,
   10: PUZZLES_10X10,
+  12: PUZZLES_12X12,
 };
 
 const DIFFICULTY_NAME: Record<number, string> = {
@@ -141,7 +143,7 @@ export function getRandomPuzzleFromBank(
   let startIdx = 0;
   let endIdx = puzzles.length;
 
-  if (size === 5 || size === 6 || size === 7 || size === 10) {
+  if (size === 5 || size === 6 || size === 7 || size === 10 || size === 12) {
     // Has 100 generated puzzles (not sorted by difficulty).
     // Use the full range for any requested difficulty.
     startIdx = 0;
@@ -185,7 +187,8 @@ export function getBankStats() {
       6: PUZZLES_6X6.length,
       7: PUZZLES_7X7.length,
       10: PUZZLES_10X10.length,
+      12: PUZZLES_12X12.length,
     },
-    total: PUZZLES_5X5.length + PUZZLES_6X6.length + PUZZLES_7X7.length + PUZZLES_10X10.length,
+    total: PUZZLES_5X5.length + PUZZLES_6X6.length + PUZZLES_7X7.length + PUZZLES_10X10.length + PUZZLES_12X12.length,
   };
 }

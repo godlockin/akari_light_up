@@ -70,7 +70,7 @@ export function useGame() {
     setIsUsingDefault(false);
 
     // 优先尝试从题库加载（对于已支持的尺寸）
-    if ([5, 6, 7, 10].includes(newSize)) {
+    if ([5, 6, 7, 10, 12].includes(newSize)) {
       if (loadDefaultPuzzle(newSize)) {
         setIsGenerating(false);
         return;

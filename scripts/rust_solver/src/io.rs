@@ -72,6 +72,30 @@ pub fn format_puzzle_file(size: usize, puzzles: &[PuzzleData], _difficulty_start
 }
 
 pub fn append_puzzles(path: &Path, new_puzzles: &[PuzzleData]) -> Result<(), std::io::Error> {
+    if !path.exists() {
+        // Create new file
+        let size_str = path.file_stem().and_then(|s| s.to_str()).unwrap_or("10x10"); // Fallback, though we should probably parse from filename or pass size
+
+        // Improve: The io::append_puzzles signature doesn't take size, but format_puzzle_file needs it.
+        // We can try to parse it from the filename or just use a default/error.
+        // Actually, let's just parse "12x12" from filename "12x12.ts"
+        let size = if size_str.contains('x') {
+            size_str.split('x').next().unwrap().parse().unwrap_or(10)
+        } else {
+            // Try to guess from the board string length of the first puzzle?
+            let len = new_puzzles[0].board_str.len();
+            (len as f64).sqrt() as usize
+        };
+
+        let content = format_puzzle_file(size, new_puzzles, 1);
+        // Create directory if missing
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(path, content)?;
+        return Ok(());
+    }
+
     // Read existing file
     let content = fs::read_to_string(path)?;
 
