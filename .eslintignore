@@ -9,6 +9,13 @@ node_modules
 # Rust
 scripts/rust_solver/
 
+# Cloudflare Wrangler
+.wrangler/
+
+# One-time scripts
+validate_puzzles.ts
+filter_valid_puzzles.ts
+
 # Config
 *.config.js
 *.config.ts

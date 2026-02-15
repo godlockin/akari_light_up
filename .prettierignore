@@ -21,3 +21,11 @@ scripts/rust_solver/.cargo_local
 .idea
 .vscode
 .DS_Store
+
+# Cloudflare Wrangler
+.wrangler/
+
+# One-time scripts / Reports
+validate_puzzles.ts
+filter_valid_puzzles.ts
+VALIDATION_REPORT.md

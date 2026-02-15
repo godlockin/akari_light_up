@@ -41,7 +41,10 @@
       "Bash(npx tsx:*)",
       "Bash(bun validate_puzzles.ts:*)",
       "Bash(python3:*)",
-      "Bash(bun:*)"
+      "Bash(bun:*)",
+      "Bash(wc:*)",
+      "Bash(du -sh:*)",
+      "Bash(npx eslint:*)"
     ]
   }
 }

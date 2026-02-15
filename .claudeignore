@@ -54,3 +54,11 @@ logs/
 
 # Coverage
 coverage/
+
+# Cloudflare Wrangler
+.wrangler/
+
+# Temporary/One-time scripts
+validate_puzzles.ts
+filter_valid_puzzles.ts
+VALIDATION_REPORT.md

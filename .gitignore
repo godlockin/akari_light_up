@@ -75,3 +75,15 @@ $RECYCLE.BIN/
 coverage/
 *.lcov
 .nyc_output
+
+# Cloudflare Wrangler
+.wrangler/
+
+# Temporary scripts (one-time use)
+validate_puzzles.ts
+filter_valid_puzzles.ts
+VALIDATION_REPORT.md
+
+# AI
+.claude/
+CLAUDE.md
